@@ -1,4 +1,5 @@
 ﻿const TOKEN_KEY = "privateChatHubToken";
+const TOKEN_COOKIE = "privateChatHubToken";
 const POLL_MS = 2000;
 
 const elements = {
@@ -30,6 +31,9 @@ const elements = {
   replyPreview: document.getElementById("replyPreview"),
   cancelReplyButton: document.getElementById("cancelReplyButton"),
   logoutButton: document.getElementById("logoutButton"),
+  loadingOverlay: document.getElementById("loadingOverlay"),
+  loadingText: document.getElementById("loadingText"),
+  floatingAdminMenu: document.getElementById("floatingAdminMenu"),
   tabButtons: document.querySelectorAll(".tab-button"),
   authForms: document.querySelectorAll(".auth-form")
 };
@@ -39,18 +43,39 @@ let currentState = null;
 let replyTarget = null;
 let lastMessagesKey = "";
 let lastSidebarKey = "";
+let activeLeaderboardMenuUser = null;
+
+function getCookie(name) {
+  const prefix = `${name}=`;
+  return document.cookie
+    .split(";")
+    .map((entry) => entry.trim())
+    .find((entry) => entry.startsWith(prefix))
+    ?.slice(prefix.length) || "";
+}
 
 function getToken() {
-  return localStorage.getItem(TOKEN_KEY);
+  return localStorage.getItem(TOKEN_KEY) || getCookie(TOKEN_COOKIE);
 }
 
 function setToken(token) {
   if (token) {
     localStorage.setItem(TOKEN_KEY, token);
+    document.cookie = `${TOKEN_COOKIE}=${encodeURIComponent(token)}; Max-Age=${60 * 60 * 24 * 30}; Path=/; SameSite=Lax`;
     return;
   }
 
   localStorage.removeItem(TOKEN_KEY);
+  document.cookie = `${TOKEN_COOKIE}=; Max-Age=0; Path=/; SameSite=Lax`;
+}
+
+function setConnecting(visible, message = "Connecting you to the main chat...") {
+  if (!elements.loadingOverlay) {
+    return;
+  }
+
+  elements.loadingText.textContent = message;
+  elements.loadingOverlay.classList.toggle("hidden", !visible);
 }
 
 function setNotice(target, message, type = "") {
@@ -133,6 +158,28 @@ async function api(path, options = {}) {
   return data;
 }
 
+function closeFloatingAdminMenu() {
+  activeLeaderboardMenuUser = null;
+  document.body.classList.remove("overlay-open");
+  elements.floatingAdminMenu.classList.add("hidden");
+  elements.floatingAdminMenu.innerHTML = "";
+}
+
+function openFloatingAdminMenu(button, username) {
+  activeLeaderboardMenuUser = username;
+  elements.floatingAdminMenu.innerHTML = renderModerationButtons(username, "leaderboard");
+  elements.floatingAdminMenu.classList.remove("hidden");
+  document.body.classList.add("overlay-open");
+
+  const rect = button.getBoundingClientRect();
+  const menuWidth = Math.min(340, window.innerWidth - 24);
+  const left = Math.max(12, Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 12));
+  const top = Math.max(12, Math.min(rect.bottom + 10, window.innerHeight - 140));
+
+  elements.floatingAdminMenu.style.left = `${left}px`;
+  elements.floatingAdminMenu.style.top = `${top}px`;
+}
+
 function showChatView() {
   elements.authPanel.classList.add("hidden");
   elements.chatPanel.classList.remove("hidden");
@@ -143,6 +190,7 @@ function showAuthView() {
   elements.authPanel.classList.remove("hidden");
   switchTab("login");
   clearNotice(elements.chatNotice);
+  setConnecting(false);
 }
 
 function startPolling() {
@@ -311,11 +359,8 @@ function renderLeaderboardActions(user) {
   }
 
   return `
-    <div class="leaderboard-admin" data-admin-menu-root>
+    <div class="leaderboard-admin">
       <button class="menu-dot-button" data-action="toggle-admin-menu" data-username="${escapeHtml(user.username)}" aria-label="Open admin actions for ${escapeHtml(user.username)}">:</button>
-      <div class="leaderboard-menu hidden" data-admin-menu>
-        ${renderModerationButtons(user.username, "leaderboard")}
-      </div>
     </div>
   `;
 }
@@ -354,6 +399,7 @@ function renderState(state) {
   const messagesChanged = messagesKey !== lastMessagesKey;
 
   showChatView();
+  setConnecting(false);
 
   if (sidebarChanged) {
     elements.welcomeText.textContent = `${state.currentUser.username}'s room`;
@@ -462,6 +508,10 @@ async function loadState() {
     return;
   }
 
+  if (!currentState) {
+    setConnecting(true, "Connecting you to the main chat...");
+  }
+
   try {
     const state = await api("/api/chat/state", { method: "GET" });
     if (elements.chatNotice.dataset.locked === "network") {
@@ -473,6 +523,7 @@ async function loadState() {
     if (error.status === 401) {
       setToken(null);
       stopPolling();
+      closeFloatingAdminMenu();
       showAuthView();
       setStatus("Your session expired. Please log in again.", "error");
       return;
@@ -499,6 +550,7 @@ async function signupUser(event) {
     setToken(result.token);
     elements.signupForm.reset();
     setStatus(result.message, "success");
+    setConnecting(true, "Connecting you to the main chat...");
     await loadState();
     startPolling();
   } catch (error) {
@@ -521,6 +573,7 @@ async function loginUser(event) {
     setToken(result.token);
     elements.loginForm.reset();
     setStatus(result.message, "success");
+    setConnecting(true, "Connecting you to the main chat...");
     await loadState();
     startPolling();
   } catch (error) {
@@ -594,24 +647,13 @@ async function runAdminAction(action, targetUsername = null, durationMinutes = n
   }
 }
 
-function toggleLeaderboardMenu(button) {
-  const root = button.closest("[data-admin-menu-root]");
-  if (!root) {
+function toggleLeaderboardMenu(button, username) {
+  if (activeLeaderboardMenuUser === username && !elements.floatingAdminMenu.classList.contains("hidden")) {
+    closeFloatingAdminMenu();
     return;
   }
 
-  const menu = root.querySelector("[data-admin-menu]");
-  if (!menu) {
-    return;
-  }
-
-  const shouldShow = menu.classList.contains("hidden");
-  elements.leaderboard.querySelectorAll("[data-admin-menu]").forEach((entry) => {
-    if (entry !== menu) {
-      entry.classList.add("hidden");
-    }
-  });
-  menu.classList.toggle("hidden", !shouldShow);
+  openFloatingAdminMenu(button, username);
 }
 
 async function handleAdminActionClick(action, username) {
@@ -662,6 +704,7 @@ async function logoutUser() {
   setToken(null);
   stopPolling();
   clearReply();
+  closeFloatingAdminMenu();
   currentState = null;
   lastMessagesKey = "";
   lastSidebarKey = "";
@@ -687,13 +730,14 @@ elements.fileInput.addEventListener("change", () => {
   elements.fileName.textContent = elements.fileInput.files[0]?.name || "No file selected";
 });
 document.addEventListener("click", (event) => {
-  if (event.target.closest("[data-admin-menu-root]")) {
+  if (event.target.closest("#floatingAdminMenu") || event.target.closest(".menu-dot-button")) {
     return;
   }
 
-  elements.leaderboard.querySelectorAll("[data-admin-menu]").forEach((menu) => {
-    menu.classList.add("hidden");
-  });
+  closeFloatingAdminMenu();
+});
+window.addEventListener("resize", () => {
+  closeFloatingAdminMenu();
 });
 elements.chatMessages.addEventListener("click", async (event) => {
   const button = event.target.closest("button");
@@ -729,15 +773,25 @@ elements.leaderboard.addEventListener("click", async (event) => {
   const username = button.dataset.username;
 
   if (action === "toggle-admin-menu") {
-    toggleLeaderboardMenu(button);
+    toggleLeaderboardMenu(button, username);
     return;
   }
 
   await handleAdminActionClick(action, username);
 });
+elements.floatingAdminMenu.addEventListener("click", async (event) => {
+  const button = event.target.closest("button");
+  if (!button) {
+    return;
+  }
+
+  await handleAdminActionClick(button.dataset.action, button.dataset.username);
+  closeFloatingAdminMenu();
+});
 
 switchTab("signup");
 
 if (getToken()) {
+  setConnecting(true, "Connecting you to the main chat...");
   loadState().then(startPolling);
 }
