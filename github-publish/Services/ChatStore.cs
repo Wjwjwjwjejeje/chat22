@@ -179,7 +179,8 @@ public sealed class ChatStore
                     username,
                     isAdmin = IsAdminUsername(username),
                     isMuted = IsUserMuted(currentUser),
-                    mutedUntilUtc = currentUser.MutedUntilUtc
+                    mutedUntilUtc = currentUser.MutedUntilUtc,
+                    isIpBanned = !string.IsNullOrWhiteSpace(currentUser.LastKnownIp) && IsIpBanned(currentUser.LastKnownIp)
                 },
                 onlineUsers = _data.Presence
                     .OrderBy(entry => entry.Username)
@@ -196,7 +197,9 @@ public sealed class ChatStore
                         points = entry.Points,
                         messageCount = entry.MessageCount,
                         isMuted = IsUserMuted(entry),
-                        isBanned = entry.IsBanned
+                        mutedUntilUtc = entry.MutedUntilUtc,
+                        isBanned = entry.IsBanned,
+                        isIpBanned = !string.IsNullOrWhiteSpace(entry.LastKnownIp) && IsIpBanned(entry.LastKnownIp)
                     })
                     .ToArray(),
                 messages = _data.Messages
@@ -372,6 +375,10 @@ public sealed class ChatStore
                     target.MutedUntilUtc = null;
                     SaveToDisk();
                     return (true, $"{target.Username} was unmuted.");
+                case "untimeout":
+                    target.MutedUntilUtc = null;
+                    SaveToDisk();
+                    return (true, $"{target.Username} is no longer timed out.");
                 case "timeout":
                     var minutes = Math.Clamp(durationMinutes ?? 10, 1, 10080);
                     target.MutedUntilUtc = DateTimeOffset.UtcNow.AddMinutes(minutes);
@@ -409,6 +416,20 @@ public sealed class ChatStore
                     _data.Presence.RemoveAll(entry => string.Equals(entry.Username, target.Username, StringComparison.OrdinalIgnoreCase));
                     SaveToDisk();
                     return (true, $"{target.Username} was IP banned.");
+                case "unipban":
+                    if (string.IsNullOrWhiteSpace(target.LastKnownIp))
+                    {
+                        return (false, "No IP is available for that user yet.");
+                    }
+
+                    var removed = _data.BannedIps.RemoveAll(entry => string.Equals(entry.IpAddress, target.LastKnownIp, StringComparison.OrdinalIgnoreCase));
+                    if (removed == 0)
+                    {
+                        return (false, "That user's IP is not currently banned.");
+                    }
+
+                    SaveToDisk();
+                    return (true, $"IP ban removed for {target.Username}.");
                 default:
                     return (false, "Unknown admin action.");
             }
@@ -505,3 +526,4 @@ public sealed class ChatStore
             LastKnownIp = user.LastKnownIp
         };
 }
+
