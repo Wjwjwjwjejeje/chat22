@@ -1,0 +1,6 @@
+Upload everything inside this folder to your GitHub repo.
+
+If your repo already has a nested folder called New project, upload these files into that folder.
+If you want a cleaner repo, upload the contents of this folder at the repo root instead.
+
+This folder already excludes bin, obj, and local build outputs.
