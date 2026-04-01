@@ -23,7 +23,6 @@ const elements = {
   chatMessages: document.getElementById("chatMessages"),
   messageForm: document.getElementById("messageForm"),
   messageInput: document.getElementById("messageInput"),
-  embedInput: document.getElementById("embedInput"),
   fileInput: document.getElementById("fileInput"),
   fileName: document.getElementById("fileName"),
   replyBanner: document.getElementById("replyBanner"),
@@ -798,4 +797,5 @@ if (getToken()) {
   setConnecting(true, "Connecting you to the main chat...");
   loadState().then(startPolling);
 }
+
 
