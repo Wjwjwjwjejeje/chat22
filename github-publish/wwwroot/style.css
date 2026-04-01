@@ -657,7 +657,7 @@ button {
 }
 
 .message-form {
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr;
   align-items: end;
   gap: 10px;
   padding-top: 10px;
@@ -670,8 +670,50 @@ button {
   background: rgba(17, 18, 20, 0.82);
 }
 
+.composer-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.composer-inputs {
+  display: grid;
+  gap: 10px;
+}
+
 .composer-tools {
   justify-content: space-between;
+}
+
+.icon-file-button {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border-radius: 999px;
+  font-size: 2rem;
+  line-height: 1;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.send-icon-button {
+  display: none;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.send-icon {
+  font-size: 1.2rem;
+  transform: translateX(1px);
 }
 
 code {
@@ -750,19 +792,26 @@ code {
 
   .chat-header,
   .reply-banner,
-  .message-form,
   .composer-tools {
     flex-direction: column;
     align-items: stretch;
   }
 
   .message-form {
-    grid-template-columns: 1fr;
     position: sticky;
     bottom: 0;
     background: linear-gradient(180deg, rgba(49, 51, 56, 0.72), rgba(35, 36, 40, 0.98) 18%);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
+  }
+
+  .composer-row {
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+  }
+
+  .composer-inputs {
+    gap: 8px;
   }
 
   .messages {
@@ -784,14 +833,32 @@ code {
     justify-items: start;
   }
 
-  .primary-button,
   .ghost-button,
-  .file-button,
   .danger-button {
     width: 100%;
   }
 
   .menu-dot-button {
     width: 42px;
+  }
+
+  .send-icon-button {
+    display: grid;
+  }
+
+  .message-form.can-send .send-icon-button {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .message-form:not(.can-send) .send-icon-button {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .icon-file-button {
+    width: 46px;
+    height: 46px;
+    font-size: 1.9rem;
   }
 }
