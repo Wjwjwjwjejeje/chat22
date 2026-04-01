@@ -34,6 +34,7 @@ const elements = {
   loadingOverlay: document.getElementById("loadingOverlay"),
   loadingText: document.getElementById("loadingText"),
   floatingAdminMenu: document.getElementById("floatingAdminMenu"),
+  pageShell: document.getElementById("pageShell"),
   tabButtons: document.querySelectorAll(".tab-button"),
   authForms: document.querySelectorAll(".auth-form")
 };
@@ -181,11 +182,13 @@ function openFloatingAdminMenu(button, username) {
 }
 
 function showChatView() {
+  elements.pageShell?.classList.add("chat-live");
   elements.authPanel.classList.add("hidden");
   elements.chatPanel.classList.remove("hidden");
 }
 
 function showAuthView() {
+  elements.pageShell?.classList.remove("chat-live");
   elements.chatPanel.classList.add("hidden");
   elements.authPanel.classList.remove("hidden");
   switchTab("login");
