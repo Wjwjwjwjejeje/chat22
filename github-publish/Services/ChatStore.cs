@@ -9,6 +9,8 @@ public sealed class ChatStore
 {
     private static readonly TimeSpan PresenceTtl = TimeSpan.FromSeconds(45);
     private static readonly TimeSpan PermanentMuteDuration = TimeSpan.FromDays(3650);
+    private static readonly TimeSpan AuthTokenLifetime = TimeSpan.FromDays(30);
+    private const string AuthTokenSecret = "PrivateChatHub::PersistentAuth::v1";
     private readonly object _lock = new();
     private readonly string _dataFilePath;
     private readonly string _uploadsDirectory;
@@ -58,10 +60,10 @@ public sealed class ChatStore
             };
 
             _data.Users.Add(user);
-            var session = CreateSession(username);
+            var token = CreateAuthToken(username);
             TouchPresence(username);
             SaveToDisk();
-            return (true, "Signup successful.", session.Token, CloneUser(user));
+            return (true, "Signup successful.", token, CloneUser(user));
         }
     }
 
@@ -95,10 +97,10 @@ public sealed class ChatStore
             }
 
             user.LastKnownIp = clientIp;
-            var session = CreateSession(user.Username);
+            var token = CreateAuthToken(user.Username);
             TouchPresence(user.Username);
             SaveToDisk();
-            return (true, "Login successful.", session.Token, CloneUser(user));
+            return (true, "Login successful.", token, CloneUser(user));
         }
     }
 
@@ -123,24 +125,20 @@ public sealed class ChatStore
         lock (_lock)
         {
             CleanupPresence();
-            var session = _data.Sessions.FirstOrDefault(entry => entry.Token == token);
-            if (session is null)
+            var username = ReadUsernameFromToken(token);
+            if (string.IsNullOrWhiteSpace(username))
             {
-                SaveToDisk();
                 return null;
             }
 
-            var user = _data.Users.FirstOrDefault(entry => entry.Username == session.Username);
+            var user = _data.Users.FirstOrDefault(entry => string.Equals(entry.Username, username, StringComparison.OrdinalIgnoreCase));
             if (user is null)
             {
-                _data.Sessions.Remove(session);
-                SaveToDisk();
                 return null;
             }
 
             if ((clientIp is not null && IsIpBanned(clientIp)) || user.IsBanned)
             {
-                _data.Sessions.RemoveAll(entry => entry.Username == user.Username);
                 SaveToDisk();
                 return null;
             }
@@ -445,18 +443,55 @@ public sealed class ChatStore
     private static bool IsUserMuted(UserRecord user) =>
         user.MutedUntilUtc.HasValue && user.MutedUntilUtc.Value > DateTimeOffset.UtcNow;
 
-    private SessionRecord CreateSession(string username)
+    private static string CreateAuthToken(string username)
     {
-        var session = new SessionRecord
-        {
-            Token = Guid.NewGuid().ToString("N"),
-            Username = username,
-            CreatedAtUtc = DateTimeOffset.UtcNow
-        };
+        var expiresAt = DateTimeOffset.UtcNow.Add(AuthTokenLifetime).ToUnixTimeSeconds();
+        var usernamePart = Convert.ToBase64String(Encoding.UTF8.GetBytes(username));
+        var payload = $"{usernamePart}.{expiresAt}";
+        var signature = SignTokenPayload(payload);
+        return $"{payload}.{signature}";
+    }
 
-        _data.Sessions.RemoveAll(entry => entry.Username == username);
-        _data.Sessions.Add(session);
-        return session;
+    private static string? ReadUsernameFromToken(string token)
+    {
+        var parts = (token ?? string.Empty).Split('.');
+        if (parts.Length != 3)
+        {
+            return null;
+        }
+
+        var payload = $"{parts[0]}.{parts[1]}";
+        if (!string.Equals(SignTokenPayload(payload), parts[2], StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        if (!long.TryParse(parts[1], out var expiresAtUnix))
+        {
+            return null;
+        }
+
+        if (DateTimeOffset.UtcNow > DateTimeOffset.FromUnixTimeSeconds(expiresAtUnix))
+        {
+            return null;
+        }
+
+        try
+        {
+            var usernameBytes = Convert.FromBase64String(parts[0]);
+            return Encoding.UTF8.GetString(usernameBytes);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static string SignTokenPayload(string payload)
+    {
+        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(AuthTokenSecret));
+        var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(payload));
+        return Convert.ToHexString(hash);
     }
 
     private void TouchPresence(string username)
