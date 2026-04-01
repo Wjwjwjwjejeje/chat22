@@ -798,3 +798,4 @@ if (getToken()) {
   setConnecting(true, "Connecting you to the main chat...");
   loadState().then(startPolling);
 }
+
