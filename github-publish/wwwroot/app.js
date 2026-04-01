@@ -37,6 +37,8 @@ const elements = {
 let pollHandle = null;
 let currentState = null;
 let replyTarget = null;
+let lastMessagesKey = "";
+let lastSidebarKey = "";
 
 function getToken() {
   return localStorage.getItem(TOKEN_KEY);
@@ -115,7 +117,9 @@ async function api(path, options = {}) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(data.message || "Request failed.");
+    const error = new Error(data.message || "Request failed.");
+    error.status = response.status;
+    throw error;
   }
 
   return data;
@@ -178,7 +182,7 @@ function renderAttachment(attachment) {
     <div class="attachment">
       ${imageMarkup}
       <a class="attachment-link" href="${safeUrl}" target="_blank" rel="noreferrer">${safeName}</a>
-      <span class="meta">${escapeHtml(type)} • ${escapeHtml(formatSize(attachment.sizeBytes))}</span>
+      <span class="meta">${escapeHtml(type)}   ${escapeHtml(formatSize(attachment.sizeBytes))}</span>
     </div>
   `;
 }
@@ -272,11 +276,47 @@ function renderMessageActions(message) {
 }
 
 function renderState(state) {
+  const previousState = currentState;
   currentState = state;
+  const sidebarKey = JSON.stringify({
+    currentUser: state.currentUser,
+    onlineUsers: state.onlineUsers,
+    leaderboard: state.leaderboard
+  });
+  const messagesKey = JSON.stringify(state.messages);
+  const sidebarChanged = sidebarKey !== lastSidebarKey;
+  const messagesChanged = messagesKey !== lastMessagesKey;
+
   showChatView();
-  elements.welcomeText.textContent = `${state.currentUser.username}'s room`;
-  elements.roleBadge.classList.toggle("hidden", !state.currentUser.isAdmin);
-  elements.adminPanel.classList.toggle("hidden", !state.currentUser.isAdmin);
+
+  if (sidebarChanged) {
+    elements.welcomeText.textContent = `${state.currentUser.username}'s room`;
+    elements.roleBadge.classList.toggle("hidden", !state.currentUser.isAdmin);
+    elements.adminPanel.classList.toggle("hidden", !state.currentUser.isAdmin);
+
+    elements.onlineUsers.innerHTML = state.onlineUsers.length
+      ? state.onlineUsers.map((username) => `
+          <div class="list-item">
+            <strong>${escapeHtml(username)}</strong>
+            <span>${username === state.currentUser.username ? "You" : "Online"}</span>
+          </div>
+        `).join("")
+      : '<p class="meta">Nobody is online right now.</p>';
+
+    elements.leaderboard.innerHTML = state.leaderboard.length
+      ? state.leaderboard.map((user, index) => `
+          <div class="list-item">
+            <div>
+              <strong>#${index + 1} ${escapeHtml(user.username)}</strong>
+              ${renderBadges(user)}
+            </div>
+            <span>${user.points} pts</span>
+          </div>
+        `).join("")
+      : '<p class="meta">Leaderboard is empty.</p>';
+
+    lastSidebarKey = sidebarKey;
+  }
 
   if (state.currentUser.isMuted) {
     setChatNotice(`You are muted until ${formatTime(state.currentUser.mutedUntilUtc)}.`, "error");
@@ -284,42 +324,33 @@ function renderState(state) {
     clearNotice(elements.chatNotice);
   }
 
-  elements.onlineUsers.innerHTML = state.onlineUsers.length
-    ? state.onlineUsers.map((username) => `
-        <div class="list-item">
-          <strong>${escapeHtml(username)}</strong>
-          <span>${username === state.currentUser.username ? "You" : "Online"}</span>
-        </div>
-      `).join("")
-    : '<p class="meta">Nobody is online right now.</p>';
+  if (messagesChanged) {
+    const wasNearBottom = !previousState || (
+      elements.chatMessages.scrollHeight - elements.chatMessages.scrollTop - elements.chatMessages.clientHeight < 120
+    );
 
-  elements.leaderboard.innerHTML = state.leaderboard.length
-    ? state.leaderboard.map((user, index) => `
-        <div class="list-item">
-          <div>
-            <strong>#${index + 1} ${escapeHtml(user.username)}</strong>
-            ${renderBadges(user)}
-          </div>
-          <span>${user.points} pts</span>
-        </div>
-      `).join("")
-    : '<p class="meta">Leaderboard is empty.</p>';
+    elements.chatMessages.innerHTML = state.messages.length
+      ? state.messages.map((message) => `
+          <article class="message ${message.username === state.currentUser.username ? "own" : ""}">
+            <div class="message-header">
+              <strong>${escapeHtml(message.username)}</strong>
+              <span class="meta">${formatTime(message.createdAtUtc)}</span>
+            </div>
+            ${renderReplySnippet(message.reply)}
+            ${message.text ? `<p>${escapeHtml(message.text)}</p>` : ""}
+            ${renderEmbed(message.embedUrl)}
+            ${renderAttachment(message.attachment)}
+            ${renderMessageActions(message)}
+          </article>
+        `).join("")
+      : '<p class="meta">No messages yet. Start the conversation.</p>';
 
-  elements.chatMessages.innerHTML = state.messages.length
-    ? state.messages.map((message) => `
-        <article class="message ${message.username === state.currentUser.username ? "own" : ""}">
-          <div class="message-header">
-            <strong>${escapeHtml(message.username)}</strong>
-            <span class="meta">${formatTime(message.createdAtUtc)}</span>
-          </div>
-          ${renderReplySnippet(message.reply)}
-          ${message.text ? `<p>${escapeHtml(message.text)}</p>` : ""}
-          ${renderEmbed(message.embedUrl)}
-          ${renderAttachment(message.attachment)}
-          ${renderMessageActions(message)}
-        </article>
-      `).join("")
-    : '<p class="meta">No messages yet. Start the conversation.</p>';
+    if (wasNearBottom) {
+      elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
+    }
+
+    lastMessagesKey = messagesKey;
+  }
 
   if (replyTarget && !state.messages.some((message) => message.id === replyTarget.id)) {
     clearReply();
@@ -328,7 +359,6 @@ function renderState(state) {
   elements.messageInput.disabled = state.currentUser.isMuted;
   elements.embedInput.disabled = state.currentUser.isMuted;
   elements.fileInput.disabled = state.currentUser.isMuted;
-  elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
 }
 
 function setReply(messageId) {
@@ -364,12 +394,22 @@ async function loadState() {
 
   try {
     const state = await api("/api/chat/state", { method: "GET" });
+    if (elements.chatNotice.dataset.locked === "network") {
+      delete elements.chatNotice.dataset.locked;
+      clearNotice(elements.chatNotice);
+    }
     renderState(state);
   } catch (error) {
-    setToken(null);
-    stopPolling();
-    showAuthView();
-    setStatus("Your session expired. Please log in again.", "error");
+    if (error.status === 401) {
+      setToken(null);
+      stopPolling();
+      showAuthView();
+      setStatus("Your session expired. Please log in again.", "error");
+      return;
+    }
+
+    elements.chatNotice.dataset.locked = "network";
+    setChatNotice("Connection hiccup. Retrying automatically...", "error");
   }
 }
 
@@ -451,7 +491,7 @@ async function sendMessage(event) {
     delete elements.chatNotice.dataset.locked;
     await loadState();
   } catch (error) {
-    elements.chatNotice.dataset.locked = "true";
+    elements.chatNotice.dataset.locked = "action";
     setChatNotice(error.message, "error");
   }
 }
@@ -463,7 +503,7 @@ async function deleteMessage(messageId) {
     delete elements.chatNotice.dataset.locked;
     await loadState();
   } catch (error) {
-    elements.chatNotice.dataset.locked = "true";
+    elements.chatNotice.dataset.locked = "action";
     setChatNotice(error.message, "error");
   }
 }
@@ -479,7 +519,7 @@ async function runAdminAction(action, targetUsername = null, durationMinutes = n
     delete elements.chatNotice.dataset.locked;
     await loadState();
   } catch (error) {
-    elements.chatNotice.dataset.locked = "true";
+    elements.chatNotice.dataset.locked = "action";
     setChatNotice(error.message, "error");
   }
 }
@@ -494,6 +534,8 @@ async function logoutUser() {
   stopPolling();
   clearReply();
   currentState = null;
+  lastMessagesKey = "";
+  lastSidebarKey = "";
   showAuthView();
   setStatus("You have been logged out.", "success");
 }
@@ -570,3 +612,4 @@ switchTab("signup");
 if (getToken()) {
   loadState().then(startPolling);
 }
+
