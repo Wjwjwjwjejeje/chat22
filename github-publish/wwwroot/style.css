@@ -315,6 +315,20 @@ textarea {
   border: 1px solid rgba(24, 21, 18, 0.08);
 }
 
+.leaderboard-item {
+  align-items: flex-start;
+}
+
+.list-item-main,
+.list-item-side {
+  display: grid;
+  gap: 8px;
+}
+
+.list-item-side {
+  justify-items: end;
+}
+
 .list-item strong,
 .message strong {
   font-weight: 700;
@@ -424,6 +438,38 @@ textarea {
 .mod-button.danger {
   background: rgba(162, 33, 33, 0.14);
   color: var(--danger);
+}
+
+.leaderboard-admin {
+  position: relative;
+}
+
+.menu-dot-button {
+  min-width: 36px;
+  height: 36px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(24, 21, 18, 0.08);
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.leaderboard-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 4;
+  width: min(320px, 72vw);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(24, 21, 18, 0.08);
+  background: rgba(255, 250, 242, 0.98);
+  box-shadow: var(--shadow);
 }
 
 .attachment {
