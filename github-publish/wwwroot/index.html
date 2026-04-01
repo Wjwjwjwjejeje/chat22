@@ -136,15 +136,19 @@
                 </div>
 
                 <div class="composer">
-                  <input type="text" id="messageInput" placeholder="Message #main-chat" maxlength="280">
-                  <input type="url" id="embedInput" placeholder="Paste a YouTube, image, video, or site link">
-                  <div class="composer-tools">
-                    <label class="file-button" for="fileInput">Attach file</label>
-                    <input type="file" id="fileInput" hidden>
-                    <span id="fileName" class="file-name">No file selected</span>
+                  <div class="composer-row">
+                    <label class="file-button icon-file-button" for="fileInput" aria-label="Attach file">+</label>
+                    <div class="composer-inputs">
+                      <input type="text" id="messageInput" placeholder="Message #main-chat" maxlength="280">
+                      <input type="url" id="embedInput" placeholder="Paste a YouTube, image, video, or site link">
+                    </div>
+                    <button type="submit" id="mobileSendButton" class="send-icon-button" aria-label="Send message">
+                      <span class="send-icon" aria-hidden="true">➤</span>
+                    </button>
                   </div>
+                  <input type="file" id="fileInput" hidden>
+                  <span id="fileName" class="file-name">No file selected</span>
                 </div>
-                <button type="submit" class="primary-button">Send</button>
               </form>
             </section>
           </div>
