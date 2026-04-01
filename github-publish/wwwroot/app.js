@@ -475,7 +475,6 @@ function renderState(state) {
   }
 
   elements.messageInput.disabled = state.currentUser.isMuted;
-  elements.embedInput.disabled = state.currentUser.isMuted;
   elements.fileInput.disabled = state.currentUser.isMuted;
 }
 
@@ -585,9 +584,7 @@ async function loginUser(event) {
 
 async function sendMessage(event) {
   event.preventDefault();
-  const text = elements.messageInput.value.trim();
-  const embedUrl = elements.embedInput.value.trim();
-  const file = elements.fileInput.files[0];
+  const file = elements.fileInput.files[0];`r`n  const rawMessage = elements.messageInput.value.trim();`r`n  const standaloneUrlMatch = rawMessage.match(/^https?:\/\/\S+$/i);`r`n  const embedUrl = standaloneUrlMatch ? standaloneUrlMatch[0] : "";`r`n  const text = embedUrl ? "" : rawMessage;
 
   if (!text && !embedUrl && !file) {
     return;
@@ -797,6 +794,8 @@ if (getToken()) {
   setConnecting(true, "Connecting you to the main chat...");
   loadState().then(startPolling);
 }
+
+
 
 
 
