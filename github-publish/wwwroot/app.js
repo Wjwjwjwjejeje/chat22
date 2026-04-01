@@ -1,4 +1,4 @@
-const TOKEN_KEY = "privateChatHubToken";
+﻿const TOKEN_KEY = "privateChatHubToken";
 const POLL_MS = 2000;
 
 const elements = {
@@ -101,6 +101,14 @@ function formatSize(sizeBytes) {
   return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function normalizeUrl(url) {
+  try {
+    return new URL(url);
+  } catch (error) {
+    return null;
+  }
+}
+
 async function api(path, options = {}) {
   const headers = { ...(options.headers || {}) };
   const token = getToken();
@@ -150,20 +158,50 @@ function stopPolling() {
 }
 
 function extractYouTubeId(url) {
-  try {
-    const parsed = new URL(url);
-    if (parsed.hostname.includes("youtu.be")) {
-      return parsed.pathname.slice(1) || null;
-    }
-
-    if (parsed.hostname.includes("youtube.com")) {
-      return parsed.searchParams.get("v");
-    }
-  } catch (error) {
+  const parsed = normalizeUrl(url);
+  if (!parsed) {
     return null;
   }
 
+  const host = parsed.hostname.replace(/^www\./i, "");
+  const segments = parsed.pathname.split("/").filter(Boolean);
+
+  if (host === "youtu.be") {
+    return segments[0] || null;
+  }
+
+  if (host === "youtube.com" || host === "m.youtube.com") {
+    if (segments[0] === "watch") {
+      return parsed.searchParams.get("v");
+    }
+
+    if (["shorts", "embed", "live", "v"].includes(segments[0])) {
+      return segments[1] || null;
+    }
+
+    return parsed.searchParams.get("v");
+  }
+
   return null;
+}
+
+function isDirectImageUrl(url) {
+  const parsed = normalizeUrl(url);
+  return !!parsed && /\.(png|jpe?g|gif|webp|bmp|svg|avif)$/i.test(parsed.pathname);
+}
+
+function isDirectVideoUrl(url) {
+  const parsed = normalizeUrl(url);
+  return !!parsed && /\.(mp4|webm|ogg|mov|m4v)$/i.test(parsed.pathname);
+}
+
+function getEmbedHostLabel(url) {
+  const parsed = normalizeUrl(url);
+  if (!parsed) {
+    return "Embedded link";
+  }
+
+  return parsed.hostname.replace(/^www\./i, "");
 }
 
 function renderAttachment(attachment) {
@@ -182,7 +220,7 @@ function renderAttachment(attachment) {
     <div class="attachment">
       ${imageMarkup}
       <a class="attachment-link" href="${safeUrl}" target="_blank" rel="noreferrer">${safeName}</a>
-      <span class="meta">${escapeHtml(type)}   ${escapeHtml(formatSize(attachment.sizeBytes))}</span>
+      <span class="meta">${escapeHtml(type)} - ${escapeHtml(formatSize(attachment.sizeBytes))}</span>
     </div>
   `;
 }
@@ -197,13 +235,13 @@ function renderEmbed(url) {
   if (youtubeId) {
     return `
       <div class="embed-card">
-        <iframe class="embed-frame" src="https://www.youtube.com/embed/${escapeHtml(youtubeId)}" allowfullscreen loading="lazy"></iframe>
+        <iframe class="embed-frame" src="https://www.youtube.com/embed/${escapeHtml(youtubeId)}" title="Embedded YouTube video" allowfullscreen loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>
         <a class="embed-link" href="${safeUrl}" target="_blank" rel="noreferrer">Open embed link</a>
       </div>
     `;
   }
 
-  if (/\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(url)) {
+  if (isDirectImageUrl(url)) {
     return `
       <div class="embed-card">
         <img class="embed-media" src="${safeUrl}" alt="Embedded media">
@@ -212,7 +250,7 @@ function renderEmbed(url) {
     `;
   }
 
-  if (/\.(mp4|webm|ogg)$/i.test(url)) {
+  if (isDirectVideoUrl(url)) {
     return `
       <div class="embed-card">
         <video class="embed-video" src="${safeUrl}" controls preload="metadata"></video>
@@ -223,7 +261,8 @@ function renderEmbed(url) {
 
   return `
     <div class="embed-card">
-      <strong>Embedded link</strong>
+      <strong>${escapeHtml(getEmbedHostLabel(url))}</strong>
+      <p class="meta">Some sites block live embeds, so this falls back to a link card instead of a broken refresh loop.</p>
       <a class="embed-link" href="${safeUrl}" target="_blank" rel="noreferrer">${safeUrl}</a>
     </div>
   `;
@@ -247,7 +286,38 @@ function renderBadges(user) {
   const badges = [];
   if (user.isBanned) badges.push('<span class="user-badge danger">Banned</span>');
   if (user.isMuted) badges.push('<span class="user-badge">Muted</span>');
+  if (user.isIpBanned) badges.push('<span class="user-badge danger">IP Banned</span>');
   return badges.length ? `<div class="badge-row">${badges.join("")}</div>` : "";
+}
+
+function renderModerationButtons(username, surface = "message") {
+  return `
+    <button class="mod-button" data-action="kick" data-username="${escapeHtml(username)}" data-surface="${surface}">Kick</button>
+    <button class="mod-button" data-action="mute" data-username="${escapeHtml(username)}" data-surface="${surface}">Mute</button>
+    <button class="mod-button" data-action="unmute" data-username="${escapeHtml(username)}" data-surface="${surface}">Unmute</button>
+    <button class="mod-button" data-action="timeout" data-username="${escapeHtml(username)}" data-surface="${surface}">Timeout</button>
+    <button class="mod-button" data-action="untimeout" data-username="${escapeHtml(username)}" data-surface="${surface}">Untimeout</button>
+    <button class="mod-button danger" data-action="ban" data-username="${escapeHtml(username)}" data-surface="${surface}">Ban</button>
+    <button class="mod-button" data-action="unban" data-username="${escapeHtml(username)}" data-surface="${surface}">Unban</button>
+    <button class="mod-button danger" data-action="ipban" data-username="${escapeHtml(username)}" data-surface="${surface}">IP Ban</button>
+    <button class="mod-button" data-action="unipban" data-username="${escapeHtml(username)}" data-surface="${surface}">IP Unban</button>
+  `;
+}
+
+function renderLeaderboardActions(user) {
+  const stateUser = currentState?.currentUser;
+  if (!stateUser?.isAdmin || user.username.toLowerCase() === stateUser.username.toLowerCase()) {
+    return "";
+  }
+
+  return `
+    <div class="leaderboard-admin" data-admin-menu-root>
+      <button class="menu-dot-button" data-action="toggle-admin-menu" data-username="${escapeHtml(user.username)}" aria-label="Open admin actions for ${escapeHtml(user.username)}">:</button>
+      <div class="leaderboard-menu hidden" data-admin-menu>
+        ${renderModerationButtons(user.username, "leaderboard")}
+      </div>
+    </div>
+  `;
 }
 
 function renderMessageActions(message) {
@@ -265,11 +335,7 @@ function renderMessageActions(message) {
   }
 
   if (stateUser.isAdmin && message.username.toLowerCase() !== stateUser.username.toLowerCase()) {
-    actions.push(`<button class="mod-button" data-action="kick" data-username="${escapeHtml(message.username)}">Kick</button>`);
-    actions.push(`<button class="mod-button" data-action="mute" data-username="${escapeHtml(message.username)}">Mute</button>`);
-    actions.push(`<button class="mod-button" data-action="timeout" data-username="${escapeHtml(message.username)}">Timeout</button>`);
-    actions.push(`<button class="mod-button danger" data-action="ban" data-username="${escapeHtml(message.username)}">Ban</button>`);
-    actions.push(`<button class="mod-button danger" data-action="ipban" data-username="${escapeHtml(message.username)}">IP Ban</button>`);
+    actions.push(renderModerationButtons(message.username));
   }
 
   return `<div class="message-actions">${actions.join("")}</div>`;
@@ -305,12 +371,16 @@ function renderState(state) {
 
     elements.leaderboard.innerHTML = state.leaderboard.length
       ? state.leaderboard.map((user, index) => `
-          <div class="list-item">
-            <div>
+          <div class="list-item leaderboard-item">
+            <div class="list-item-main">
               <strong>#${index + 1} ${escapeHtml(user.username)}</strong>
               ${renderBadges(user)}
+              <p class="meta">${user.messageCount} messages${user.isMuted && user.mutedUntilUtc ? ` - muted until ${escapeHtml(formatTime(user.mutedUntilUtc))}` : ""}</p>
             </div>
-            <span>${user.points} pts</span>
+            <div class="list-item-side">
+              <span>${user.points} pts</span>
+              ${renderLeaderboardActions(user)}
+            </div>
           </div>
         `).join("")
       : '<p class="meta">Leaderboard is empty.</p>';
@@ -524,6 +594,65 @@ async function runAdminAction(action, targetUsername = null, durationMinutes = n
   }
 }
 
+function toggleLeaderboardMenu(button) {
+  const root = button.closest("[data-admin-menu-root]");
+  if (!root) {
+    return;
+  }
+
+  const menu = root.querySelector("[data-admin-menu]");
+  if (!menu) {
+    return;
+  }
+
+  const shouldShow = menu.classList.contains("hidden");
+  elements.leaderboard.querySelectorAll("[data-admin-menu]").forEach((entry) => {
+    if (entry !== menu) {
+      entry.classList.add("hidden");
+    }
+  });
+  menu.classList.toggle("hidden", !shouldShow);
+}
+
+async function handleAdminActionClick(action, username) {
+  if (!username) {
+    return;
+  }
+
+  if (action === "timeout") {
+    const value = window.prompt(`Timeout ${username} for how many minutes?`, "10");
+    if (!value) {
+      return;
+    }
+
+    const minutes = Number.parseInt(value, 10);
+    if (!Number.isFinite(minutes) || minutes <= 0) {
+      setChatNotice("Enter a valid number of minutes.", "error");
+      return;
+    }
+
+    await runAdminAction("timeout", username, minutes);
+    return;
+  }
+
+  const confirmLabels = {
+    kick: `Kick ${username}?`,
+    mute: `Mute ${username}?`,
+    unmute: `Unmute ${username}?`,
+    untimeout: `Remove timeout for ${username}?`,
+    ban: `Ban ${username}?`,
+    unban: `Unban ${username}?`,
+    ipban: `IP ban ${username}?`,
+    unipban: `Remove IP ban for ${username}?`
+  };
+
+  if (confirmLabels[action] && !window.confirm(confirmLabels[action])) {
+    return;
+  }
+
+  await runAdminAction(action, username);
+}
+
 async function logoutUser() {
   try {
     await api("/api/auth/logout", { method: "POST" });
@@ -557,6 +686,15 @@ elements.clearChatButton.addEventListener("click", async () => {
 elements.fileInput.addEventListener("change", () => {
   elements.fileName.textContent = elements.fileInput.files[0]?.name || "No file selected";
 });
+document.addEventListener("click", (event) => {
+  if (event.target.closest("[data-admin-menu-root]")) {
+    return;
+  }
+
+  elements.leaderboard.querySelectorAll("[data-admin-menu]").forEach((menu) => {
+    menu.classList.add("hidden");
+  });
+});
 elements.chatMessages.addEventListener("click", async (event) => {
   const button = event.target.closest("button");
   if (!button) {
@@ -579,32 +717,23 @@ elements.chatMessages.addEventListener("click", async (event) => {
     return;
   }
 
-  if (!username) {
+  await handleAdminActionClick(action, username);
+});
+elements.leaderboard.addEventListener("click", async (event) => {
+  const button = event.target.closest("button");
+  if (!button) {
     return;
   }
 
-  if (action === "timeout") {
-    const value = window.prompt(`Timeout ${username} for how many minutes?`, "10");
-    if (!value) {
-      return;
-    }
+  const action = button.dataset.action;
+  const username = button.dataset.username;
 
-    const minutes = Number.parseInt(value, 10);
-    if (!Number.isFinite(minutes) || minutes <= 0) {
-      setChatNotice("Enter a valid number of minutes.", "error");
-      return;
-    }
-
-    await runAdminAction("timeout", username, minutes);
+  if (action === "toggle-admin-menu") {
+    toggleLeaderboardMenu(button);
     return;
   }
 
-  const requiresConfirm = ["kick", "mute", "ban", "ipban"].includes(action);
-  if (requiresConfirm && !window.confirm(`${action.toUpperCase()} ${username}?`)) {
-    return;
-  }
-
-  await runAdminAction(action, username);
+  await handleAdminActionClick(action, username);
 });
 
 switchTab("signup");
@@ -612,4 +741,3 @@ switchTab("signup");
 if (getToken()) {
   loadState().then(startPolling);
 }
-
