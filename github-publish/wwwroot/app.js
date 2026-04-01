@@ -584,7 +584,11 @@ async function loginUser(event) {
 
 async function sendMessage(event) {
   event.preventDefault();
-  const file = elements.fileInput.files[0];`r`n  const rawMessage = elements.messageInput.value.trim();`r`n  const standaloneUrlMatch = rawMessage.match(/^https?:\/\/\S+$/i);`r`n  const embedUrl = standaloneUrlMatch ? standaloneUrlMatch[0] : "";`r`n  const text = embedUrl ? "" : rawMessage;
+  const file = elements.fileInput.files[0];
+  const rawMessage = elements.messageInput.value.trim();
+  const standaloneUrlMatch = rawMessage.match(/^https?:\/\/\S+$/i);
+  const embedUrl = standaloneUrlMatch ? standaloneUrlMatch[0] : "";
+  const text = embedUrl ? "" : rawMessage;
 
   if (!text && !embedUrl && !file) {
     return;
