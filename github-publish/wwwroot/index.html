@@ -19,7 +19,7 @@
     </div>
   </div>
   <div id="floatingAdminMenu" class="floating-admin-menu hidden" aria-live="polite"></div>
-  <div class="page-shell">
+  <div id="pageShell" class="page-shell">
     <header class="hero">
       <div>
         <p class="eyebrow">Private rooms, richer chat</p>
@@ -83,59 +83,71 @@
       </section>
 
       <section id="chatPanel" class="panel chat-panel hidden">
-        <div class="chat-header">
-          <div>
-            <p class="eyebrow">Connected</p>
-            <h2 id="welcomeText">Private Chat Hub</h2>
-          </div>
-          <div class="header-actions">
-            <span id="roleBadge" class="role-badge hidden">Admin</span>
-            <button id="logoutButton" class="ghost-button">Logout</button>
-          </div>
-        </div>
-        <div id="chatNotice" class="status-message" aria-live="polite"></div>
-
-        <div class="chat-layout">
-          <aside class="sidebar">
-            <div class="side-card">
-              <h3>Online users</h3>
-              <div id="onlineUsers" class="list-block"></div>
-            </div>
-            <div class="side-card">
-              <h3>Leaderboard</h3>
-              <div id="leaderboard" class="list-block"></div>
-            </div>
-            <div id="adminPanel" class="side-card hidden">
-              <h3>Admin panel</h3>
-              <p class="meta">`sonickid22` can kick, mute, timeout, ban, IP ban, and clear the room.</p>
-              <button id="clearChatButton" class="danger-button wide-button">Clear whole chat</button>
-            </div>
+        <div class="chat-shell">
+          <aside class="guild-rail">
+            <div class="guild-badge">PCH</div>
+            <div class="guild-pill active"></div>
+            <div class="guild-badge guild-badge-small">#</div>
           </aside>
 
-          <section class="chat-main">
-            <div id="chatMessages" class="messages" aria-live="polite"></div>
+          <div class="chat-layout">
+            <aside class="sidebar">
+              <div class="side-card server-card">
+                <p class="eyebrow">Main Server</p>
+                <h3>Private Chat Hub</h3>
+                <p class="meta">One private room. One live board. One place to hang out.</p>
+              </div>
+              <div class="side-card">
+                <h3>Members online</h3>
+                <div id="onlineUsers" class="list-block"></div>
+              </div>
+              <div class="side-card">
+                <h3>Leaderboard</h3>
+                <div id="leaderboard" class="list-block"></div>
+              </div>
+              <div id="adminPanel" class="side-card hidden">
+                <h3>Admin panel</h3>
+                <p class="meta">`sonickid22` can kick, mute, timeout, ban, IP ban, and clear the room.</p>
+                <button id="clearChatButton" class="danger-button wide-button">Clear whole chat</button>
+              </div>
+            </aside>
 
-            <form id="messageForm" class="message-form">
-              <div id="replyBanner" class="reply-banner hidden">
+            <section class="chat-main">
+              <div class="chat-header">
                 <div>
-                  <strong>Replying to <span id="replyUsername"></span></strong>
-                  <p id="replyPreview" class="meta"></p>
+                  <p class="eyebrow">Main chat</p>
+                  <h2 id="welcomeText">Private Chat Hub</h2>
                 </div>
-                <button type="button" id="cancelReplyButton" class="mini-button">Cancel</button>
+                <div class="header-actions">
+                  <span id="roleBadge" class="role-badge hidden">Admin</span>
+                  <button id="logoutButton" class="ghost-button">Logout</button>
+                </div>
               </div>
+              <div id="chatNotice" class="status-message" aria-live="polite"></div>
+              <div id="chatMessages" class="messages" aria-live="polite"></div>
 
-              <div class="composer">
-                <input type="text" id="messageInput" placeholder="Send a message to the room" maxlength="280">
-                <input type="url" id="embedInput" placeholder="Paste an embed link (YouTube, image, video, site URL)">
-                <div class="composer-tools">
-                  <label class="file-button" for="fileInput">Attach file</label>
-                  <input type="file" id="fileInput" hidden>
-                  <span id="fileName" class="file-name">No file selected</span>
+              <form id="messageForm" class="message-form">
+                <div id="replyBanner" class="reply-banner hidden">
+                  <div>
+                    <strong>Replying to <span id="replyUsername"></span></strong>
+                    <p id="replyPreview" class="meta"></p>
+                  </div>
+                  <button type="button" id="cancelReplyButton" class="mini-button">Cancel</button>
                 </div>
-              </div>
-              <button type="submit" class="primary-button">Send</button>
-            </form>
-          </section>
+
+                <div class="composer">
+                  <input type="text" id="messageInput" placeholder="Message #main-chat" maxlength="280">
+                  <input type="url" id="embedInput" placeholder="Paste a YouTube, image, video, or site link">
+                  <div class="composer-tools">
+                    <label class="file-button" for="fileInput">Attach file</label>
+                    <input type="file" id="fileInput" hidden>
+                    <span id="fileName" class="file-name">No file selected</span>
+                  </div>
+                </div>
+                <button type="submit" class="primary-button">Send</button>
+              </form>
+            </section>
+          </div>
         </div>
       </section>
     </main>
