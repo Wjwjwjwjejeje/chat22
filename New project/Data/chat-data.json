@@ -1,0 +1,62 @@
+{
+  "Users": [
+    {
+      "Email": "1sonicthehedgehog2@gmail.com",
+      "Username": "sonickid22",
+      "PasswordHash": "EB44F0FE5160B037E856C79D673D7A2F2B71330BB90244567D75F10CF9667F45",
+      "MessageCount": 2,
+      "Points": 20,
+      "JoinedAtUtc": "2026-04-01T14:41:58.5787863+00:00"
+    },
+    {
+      "Email": "saborn712@gmail.com",
+      "Username": "sonickidfriend",
+      "PasswordHash": "E0BAE149D5EF9E0F0AB1D681E9DC88838563DB193EB92ED102E9CFF4D5EDE8E3",
+      "MessageCount": 1,
+      "Points": 10,
+      "JoinedAtUtc": "2026-04-01T14:42:26.1526226+00:00"
+    }
+  ],
+  "Sessions": [
+    {
+      "Token": "6d5c22ec758c464e813844a54e5d01a1",
+      "Username": "sonickid22",
+      "CreatedAtUtc": "2026-04-01T14:41:58.5796254+00:00"
+    },
+    {
+      "Token": "e4637e0346d94b51bf0f1fcddc4237f9",
+      "Username": "sonickidfriend",
+      "CreatedAtUtc": "2026-04-01T14:42:26.152626+00:00"
+    }
+  ],
+  "Messages": [
+    {
+      "Id": "8b2dc2ce45054ac3a67c2e6b70093c01",
+      "Username": "sonickid22",
+      "Text": "hey",
+      "CreatedAtUtc": "2026-04-01T14:42:02.5607051+00:00"
+    },
+    {
+      "Id": "b18ce7d38b4641fd92c36a4d76311d61",
+      "Username": "sonickidfriend",
+      "Text": "YOO WHATS UPPP",
+      "CreatedAtUtc": "2026-04-01T14:42:34.87904+00:00"
+    },
+    {
+      "Id": "b931758952a446a3a3011ffc548c6890",
+      "Username": "sonickid22",
+      "Text": "nothing much",
+      "CreatedAtUtc": "2026-04-01T14:42:42.8234534+00:00"
+    }
+  ],
+  "Presence": [
+    {
+      "Username": "sonickidfriend",
+      "LastSeenUtc": "2026-04-01T14:49:34.1498358+00:00"
+    },
+    {
+      "Username": "sonickid22",
+      "LastSeenUtc": "2026-04-01T14:49:34.1505391+00:00"
+    }
+  ]
+}

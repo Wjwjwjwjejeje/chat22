@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gmail Chat Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Real backend chat</p>
+        <h1>Gmail Chat Hub</h1>
+        <p class="hero-copy">
+          Sign up with a <code>@gmail.com</code> address, log in with your username and password,
+          and chat through a shared backend that stores users, messages, and leaderboard data.
+        </p>
+      </div>
+      <div class="hero-card">
+        <p>Live app features</p>
+        <ul>
+          <li>Backend account storage</li>
+          <li>Gmail-only signup</li>
+          <li>Shared persistent messages</li>
+          <li>Leaderboard and online users</li>
+        </ul>
+      </div>
+    </header>
+
+    <main class="app-grid">
+      <section id="authPanel" class="panel auth-panel">
+        <div class="tabs">
+          <button class="tab-button active" data-tab="signup">Sign Up</button>
+          <button class="tab-button" data-tab="login">Login</button>
+        </div>
+
+        <form id="signupForm" class="auth-form active" autocomplete="off">
+          <h2>Create account</h2>
+          <label>
+            Gmail address
+            <input type="email" id="signupEmail" placeholder="you@gmail.com" required>
+          </label>
+          <label>
+            Username
+            <input type="text" id="signupUsername" placeholder="pick a username" minlength="3" maxlength="20" required>
+          </label>
+          <label>
+            Password
+            <input type="password" id="signupPassword" placeholder="create a password" minlength="4" required>
+          </label>
+          <button type="submit" class="primary-button">Create account</button>
+          <p class="form-note">Only Gmail addresses ending in <code>@gmail.com</code> are allowed.</p>
+        </form>
+
+        <form id="loginForm" class="auth-form" autocomplete="off">
+          <h2>Welcome back</h2>
+          <label>
+            Username
+            <input type="text" id="loginUsername" placeholder="enter your username" required>
+          </label>
+          <label>
+            Password
+            <input type="password" id="loginPassword" placeholder="enter your password" required>
+          </label>
+          <button type="submit" class="primary-button">Login</button>
+          <p class="form-note">This login checks your saved backend account.</p>
+        </form>
+
+        <div id="authMessage" class="status-message" aria-live="polite"></div>
+      </section>
+
+      <section id="chatPanel" class="panel chat-panel hidden">
+        <div class="chat-header">
+          <div>
+            <p class="eyebrow">Connected</p>
+            <h2 id="welcomeText">Chat room</h2>
+          </div>
+          <button id="logoutButton" class="ghost-button">Logout</button>
+        </div>
+
+        <div class="chat-layout">
+          <aside class="sidebar">
+            <div class="side-card">
+              <h3>Online users</h3>
+              <div id="onlineUsers" class="list-block"></div>
+            </div>
+            <div class="side-card">
+              <h3>Leaderboard</h3>
+              <div id="leaderboard" class="list-block"></div>
+            </div>
+          </aside>
+
+          <section class="chat-main">
+            <div id="chatMessages" class="messages" aria-live="polite"></div>
+
+            <form id="messageForm" class="message-form">
+              <input type="text" id="messageInput" placeholder="send a message to the room" maxlength="280" required>
+              <button type="submit" class="primary-button">Send</button>
+            </form>
+          </section>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
